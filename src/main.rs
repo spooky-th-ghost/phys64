@@ -2,7 +2,6 @@ use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 
 fn main() {
-    let gravity_force: f32 = Unit(4).into();
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
@@ -12,26 +11,28 @@ fn main() {
             FixedUpdate,
             (
                 set_player_direction,
-                apply_momentum,
+                set_translation,
                 rotate_to_direction,
                 handle_speed,
                 apply_gravity,
             ),
         )
         .insert_resource(Time::<Fixed>::from_seconds(1.0 / 60.0))
-        .insert_resource(Gravity(Vec3::NEG_Y * gravity_force))
         .run();
 }
 
 #[derive(Resource)]
-struct Gravity(Vec3);
+struct Gravity {
+    force: Vec3,
+    entity: Entity,
+}
 
 impl Gravity {
     pub fn get(&self) -> Vec3 {
-        self.0
+        self.force
     }
     pub fn set(&mut self, value: Vec3) {
-        self.0 = value;
+        self.force = value;
     }
 }
 
@@ -117,29 +118,43 @@ pub struct Speed {
 #[derive(Component)]
 pub struct Force {
     applied_force: Vec3,
-    expiration_timer: Timer,
+    expiration_timer: Option<Timer>,
     lifetime: f32,
 }
 
 impl Force {
-    pub fn new(applied_force: Vec3, lifetime: f32) -> Self {
+    pub fn new(applied_force: Vec3, lifespan: Option<f32>) -> Self {
+        let (expiration_timer,lifetime) = if let Some(total_lifetime) = lifespan {
+            (Some(Timer::from_seconds(total_lifetime, TimerMode::Once)), total_lifetime)
+        } else {
+            (None, 0.0)
+        };
+
         Force {
             applied_force,
-            expiration_timer: Timer::from_seconds(lifetime, TimerMode::Once),
+            expiration_timer,
             lifetime,
         }
     }
 
     pub fn tick(&mut self, delta: std::time::Duration) {
-        self.expiration_timer.tick(delta);
+        if let Some(timer) = self.expiration_timer.as_mut() {
+            timer.tick(delta);
+        }
     }
 
     pub fn finished(&self) -> bool {
-        self.expiration_timer.finished()
+        if let Some(timer) = &self.expiration_timer {
+            timer.finished()
+        } else {
+            false
+        }
     }
 
     pub fn reset(&mut self) {
-        self.expiration_timer = Timer::from_seconds(self.lifetime, TimerMode::Once);
+        if let Some(_) = self.expiration_timer {
+            self.expiration_timer =  Some(Timer::from_seconds(self.lifetime, TimerMode::Once));
+        }
     }
 
     pub fn add_force(&mut self, force: Vec3) {
@@ -147,8 +162,10 @@ impl Force {
     }
 
     pub fn add_time(&mut self, seconds: f32) {
-        let remaining = self.expiration_timer.remaining_secs();
-        self.expiration_timer = Timer::from_seconds(seconds + remaining, TimerMode::Once);
+        if let Some(mut timer) = self.expiration_timer.as_mut() {
+            let remaining = timer.remaining_secs();
+            self.expiration_timer = Some(Timer::from_seconds(seconds + remaining, TimerMode::Once));
+        }
     }
 }
 
@@ -158,6 +175,10 @@ pub struct Forces {
 }
 
 impl Forces {
+    pub fn new() -> Forces {
+        Forces {forces: bevy::utils::HashMap::new()}
+    }
+
     pub fn add(&mut self, entity: Entity, force: Force) {
         self.forces.insert(entity, force);
     }
@@ -263,6 +284,11 @@ impl Default for Speed {
 }
 
 fn setup(mut commands: Commands) {
+    let gravity_force: f32 = Unit(4).into();
+    let force = Vec3::NEG_Y * gravity_force;
+    let entity = Entity::from_raw(99);
+    commands.insert_resource(Gravity {force,entity});
+
     commands
         .spawn(Camera3dBundle {
             transform: Transform::from_translation(Vec3::new(0.0, 2.0, -30.0))
@@ -272,16 +298,6 @@ fn setup(mut commands: Commands) {
         .insert(MainCamera);
 
     let mut force_map: bevy::utils::HashMap<Entity, Force> = bevy::utils::HashMap::new();
-
-    force_map.insert(Entity::from_raw(2), Force::new(Vec3::ONE, 1.0));
-    force_map.insert(
-        Entity::from_raw(7),
-        Force::new(Vec3::new(1.3, -0.2, 17.8), 2.0),
-    );
-    force_map.insert(
-        Entity::from_raw(19),
-        Force::new(Vec3::new(1.1, 23.2, 9.8), 3.0),
-    );
 
     commands.spawn((
         TransformBundle::default(),
@@ -418,11 +434,13 @@ fn handle_speed(
     }
 }
 
-pub fn apply_momentum(mut query: Query<(&mut KinematicCharacterController, &Momentum)>) {
+pub fn set_translation(mut query: Query<(&mut KinematicCharacterController,  &Momentum )>) {
     for (mut character, momentum) in &mut query {
+        let mut translation_to_apply: Vec3 = Vec3::ZERO;
         if momentum.is_any() {
-            character.translation = Some(momentum.get());
+            translation_to_apply += momentum.get();
         }
+        character.translation = Some(translation_to_apply);
     }
 }
 
