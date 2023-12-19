@@ -89,7 +89,6 @@ impl InputBuffer {
         for action in stale_buffers.iter() {
             self.buffered_actions.remove(action);
             self.stale_actions.insert(*action);
-            println!("{:?} has become stale", action);
         }
     }
 }

@@ -159,7 +159,6 @@ fn handle_ground_sensor(
 fn jump(mut query: Query<(&mut Forces, &InputBuffer, &GroundSensor), With<Player>>) {
     for (mut forces, buffer, sensor) in &mut query {
         if buffer.just_pressed(PlayerAction::Jump) && sensor.grounded() {
-            println!("Just pressed jump");
             forces.add(
                 ForceId::Jump,
                 Force::new(
