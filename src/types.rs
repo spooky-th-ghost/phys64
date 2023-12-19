@@ -21,7 +21,7 @@ impl Gravity {
 #[derive(Component)]
 pub struct Player;
 
-#[derive(Component, Eq, PartialEq, Hash, Clone, Copy)]
+#[derive(Component, Eq, PartialEq, Hash, Clone, Copy, Debug)]
 pub enum PlayerAction {
     Jump,
 }
@@ -44,7 +44,10 @@ impl InputBuffer {
         }
 
         match self.buffered_actions.get(&action) {
-            Some(_) => true,
+            Some(_) => match self.stale_actions.get(&action) {
+                Some(_) => return false,
+                None => return true,
+            },
             None => false,
         }
     }
@@ -85,6 +88,8 @@ impl InputBuffer {
             });
         for action in stale_buffers.iter() {
             self.buffered_actions.remove(action);
+            self.stale_actions.insert(*action);
+            println!("{:?} has become stale", action);
         }
     }
 }

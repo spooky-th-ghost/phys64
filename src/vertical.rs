@@ -9,7 +9,7 @@ impl Plugin for SecondTakePlugin {
         app.insert_resource(Gravity::new(0.02))
             .add_systems(Startup, setup)
             .add_systems(
-                Update,
+                FixedUpdate,
                 (
                     read_inputs,
                     (apply_gravity, jump, release_jump, handle_ground_sensor),
@@ -63,14 +63,29 @@ fn setup(mut commands: Commands) {
     ));
 }
 
+#[derive(Default, Resource)]
+pub struct DebugCounter(u32);
+
+impl DebugCounter {
+    pub fn get(&self) -> u32 {
+        self.0
+    }
+
+    pub fn increase(&mut self) {
+        self.0 += 1;
+    }
+}
+
 fn read_inputs(
     time: Res<Time>,
     input: Res<Input<KeyCode>>,
     mut input_buffer_query: Query<&mut InputBuffer>,
+    mut jump_presses: Local<DebugCounter>,
 ) {
     for mut buffer in &mut input_buffer_query {
         buffer.tick(time.delta());
         if input.just_pressed(KeyCode::Space) {
+            jump_presses.increase();
             buffer.press(PlayerAction::Jump);
         }
 
@@ -144,6 +159,7 @@ fn handle_ground_sensor(
 fn jump(mut query: Query<(&mut Forces, &InputBuffer, &GroundSensor), With<Player>>) {
     for (mut forces, buffer, sensor) in &mut query {
         if buffer.just_pressed(PlayerAction::Jump) && sensor.grounded() {
+            println!("Just pressed jump");
             forces.add(
                 ForceId::Jump,
                 Force::new(
@@ -156,9 +172,9 @@ fn jump(mut query: Query<(&mut Forces, &InputBuffer, &GroundSensor), With<Player
     }
 }
 
-fn release_jump(mut player_query: Query<(&mut Forces, &InputBuffer), With<Player>>) {
-    for (mut forces, buffer) in &mut player_query {
-        if buffer.released(PlayerAction::Jump) {
+fn release_jump(mut player_query: Query<(&mut Forces, &Momentum, &InputBuffer), With<Player>>) {
+    for (mut forces, momentum, buffer) in &mut player_query {
+        if buffer.released(PlayerAction::Jump) || momentum.y() <= 0.0 {
             if forces.has_key(ForceId::Jump) {
                 forces.remove(ForceId::Jump);
             }
