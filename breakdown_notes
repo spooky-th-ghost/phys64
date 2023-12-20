@@ -1,6 +1,0 @@
-1. Check input
-2. Set direction
-3. If direction is outside of deadzone rotate to direction
-4. Tick accel timer
-5. if Grounded (Add speed to momentum) else () 
-6. 
