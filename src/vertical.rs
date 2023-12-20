@@ -7,6 +7,9 @@ pub struct SecondTakePlugin;
 impl Plugin for SecondTakePlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Gravity::new(0.02))
+            .insert_resource(CameraConfig {
+                mode: CameraMode::Normal,
+            })
             .add_systems(Startup, setup)
             .add_systems(
                 FixedUpdate,
@@ -22,21 +25,53 @@ impl Plugin for SecondTakePlugin {
     }
 }
 
-fn setup(mut commands: Commands) {
+#[derive(PartialEq)]
+pub enum CameraMode {
+    Ortho,
+    Normal,
+}
+
+#[derive(Resource)]
+pub struct CameraConfig {
+    mode: CameraMode,
+}
+
+fn setup(
+    camera_config: Res<CameraConfig>,
+    mut commands: Commands,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
+    let projection_type = if camera_config.mode == CameraMode::Ortho {
+        Projection::Orthographic(OrthographicProjection {
+            scale: 0.025,
+            ..default()
+        })
+    } else {
+        Projection::default()
+    };
+
+    let camera_transform = if camera_config.mode == CameraMode::Ortho {
+        Transform::from_translation(Vec3::new(0.0, 2.0, -30.0))
+            .looking_at(Vec3::new(0.0, 2.0, 0.0), Vec3::Y)
+    } else {
+        Transform::from_translation(Vec3::new(0.0, 10.0, -15.0)).looking_at(Vec3::ZERO, Vec3::Y)
+    };
+
     commands
         .spawn(Camera3dBundle {
-            transform: Transform::from_translation(Vec3::new(0.0, 2.0, -30.0))
-                .looking_at(Vec3::new(0.0, 2.0, 0.0), Vec3::Y),
-            projection: Projection::Orthographic(OrthographicProjection {
-                scale: 0.025,
-                ..default()
-            }),
+            transform: camera_transform,
+            projection: projection_type,
             ..default()
         })
         .insert(MainCamera);
 
     commands.spawn((
-        TransformBundle::default(),
+        PbrBundle {
+            material: materials.add(Color::LIME_GREEN.into()),
+            mesh: meshes.add(shape::Capsule { ..default() }.into()),
+            ..default()
+        },
         Player,
         Collider::capsule_y(0.5, 0.5),
         KinematicCharacterController {
@@ -54,8 +89,10 @@ fn setup(mut commands: Commands) {
     ));
 
     commands.spawn((
-        TransformBundle {
-            local: Transform::from_translation(Vec3::new(0.0, -2.0, 0.0)),
+        PbrBundle {
+            material: materials.add(Color::WHITE.into()),
+            mesh: meshes.add(shape::Box::new(20.0, 0.5, 20.0).into()),
+            transform: Transform::from_translation(Vec3::new(0.0, -2.0, 0.0)),
             ..default()
         },
         Collider::cuboid(10.0, 0.25, 10.0),
@@ -118,11 +155,10 @@ fn apply_gravity(
 }
 
 fn handle_ground_sensor(
-    mut ground_sensor_query: Query<(&mut GroundSensor, &Transform)>,
-    mut gizmos: Gizmos,
+    mut ground_sensor_query: Query<(&mut GroundSensor, &mut Forces, &Transform)>,
     rapier_context: Res<RapierContext>,
 ) {
-    for (mut ground_sensor, transform) in &mut ground_sensor_query {
+    for (mut ground_sensor, mut forces, transform) in &mut ground_sensor_query {
         let shape_position = transform.translation + Vec3::NEG_Y * 0.8;
         let shape_rotation = transform.rotation;
         let cast_direction = Vec3::NEG_Y;
@@ -131,7 +167,7 @@ fn handle_ground_sensor(
         let stop_at_penetration = false;
         let cast_filter = QueryFilter::new();
 
-        if let Some((handle, hit)) = rapier_context.cast_shape(
+        if let Some(_) = rapier_context.cast_shape(
             shape_position,
             shape_rotation,
             cast_direction,
@@ -141,17 +177,9 @@ fn handle_ground_sensor(
             cast_filter,
         ) {
             ground_sensor.set_state(GroundedState::Grounded);
+            forces.remove(ForceId::Jump);
         } else {
             ground_sensor.set_state(GroundedState::Airborne);
-        }
-
-        match ground_sensor.grounded() {
-            true => {
-                gizmos.circle(Vec3::ZERO, Vec3::Y, 3.0, Color::RED);
-            }
-            false => {
-                gizmos.circle(Vec3::ZERO, Vec3::Y, 3.0, Color::GREEN);
-            }
         }
     }
 }
@@ -181,17 +209,9 @@ fn release_jump(mut player_query: Query<(&mut Forces, &Momentum, &InputBuffer), 
     }
 }
 
-fn apply_forces(
-    mut gizmos: Gizmos,
-    time: Res<Time>,
-    mut physics_query: Query<(&mut Momentum, &mut Forces)>,
-) {
+fn apply_forces(time: Res<Time>, mut physics_query: Query<(&mut Momentum, &mut Forces)>) {
     for (mut momentum, mut forces) in &mut physics_query {
         forces.tick(time.delta());
-        for i in 0..forces.length() {
-            let translation = Vec3::new(i as f32 * -1.0, -2.0, 0.0);
-            gizmos.line(translation, translation + Vec3::NEG_Y * 1.0, Color::BLUE);
-        }
         let forces_vector = forces.get_combined_force();
         momentum.set(forces_vector);
     }
