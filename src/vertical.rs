@@ -15,7 +15,15 @@ impl Plugin for SecondTakePlugin {
                 FixedUpdate,
                 (
                     read_inputs,
-                    (apply_gravity, jump, release_jump, handle_ground_sensor),
+                    (
+                        set_player_direction,
+                        rotate_to_direction,
+                        apply_gravity,
+                        jump,
+                        release_jump,
+                        handle_ground_sensor,
+                        apply_drift,
+                    ),
                     apply_forces,
                     set_translation,
                 )
@@ -34,6 +42,40 @@ pub enum CameraMode {
 #[derive(Resource)]
 pub struct CameraConfig {
     mode: CameraMode,
+}
+
+fn get_direction_in_camera_space(
+    camera_transform: &Transform,
+    input: &Res<Input<KeyCode>>,
+) -> Vec3 {
+    let mut forward = camera_transform.forward();
+    forward.y = 0.0;
+    forward = forward.normalize();
+
+    let mut right = camera_transform.right();
+    right.y = 0.0;
+    right = right.normalize();
+
+    let mut x = 0.0;
+    let mut y = 0.0;
+
+    if input.pressed(KeyCode::A) {
+        x -= 1.0;
+    }
+    if input.pressed(KeyCode::D) {
+        x += 1.0;
+    }
+    if input.pressed(KeyCode::W) {
+        y += 1.0;
+    }
+    if input.pressed(KeyCode::S) {
+        y -= 1.0;
+    }
+
+    let right_vec: Vec3 = x * right;
+    let forward_vec: Vec3 = y * forward;
+
+    right_vec + forward_vec
 }
 
 fn setup(
@@ -100,34 +142,36 @@ fn setup(
     ));
 }
 
-#[derive(Default, Resource)]
-pub struct DebugCounter(u32);
-
-impl DebugCounter {
-    pub fn get(&self) -> u32 {
-        self.0
-    }
-
-    pub fn increase(&mut self) {
-        self.0 += 1;
-    }
-}
-
 fn read_inputs(
     time: Res<Time>,
     input: Res<Input<KeyCode>>,
     mut input_buffer_query: Query<&mut InputBuffer>,
-    mut jump_presses: Local<DebugCounter>,
 ) {
     for mut buffer in &mut input_buffer_query {
         buffer.tick(time.delta());
         if input.just_pressed(KeyCode::Space) {
-            jump_presses.increase();
             buffer.press(PlayerAction::Jump);
         }
 
         if input.just_released(KeyCode::Space) {
             buffer.release(PlayerAction::Jump);
+        }
+    }
+}
+
+fn apply_drift(
+    time: Res<Time>,
+    mut character_query: Query<(&mut Forces, &GroundSensor)>,
+    camera_query: Query<&Transform, With<MainCamera>>,
+    input: Res<Input<KeyCode>>,
+) {
+    let camera_transform = camera_query.single();
+    for (mut forces, ground_sensor) in &mut character_query {
+        if ground_sensor.grounded() {
+            forces.remove(ForceId::Drift);
+        } else {
+            let drift = get_direction_in_camera_space(camera_transform, &input);
+            forces.add_to(ForceId::Drift, drift * time.delta_seconds() * 0.25);
         }
     }
 }
@@ -150,6 +194,38 @@ fn apply_gravity(
             if forces.has_key(ForceId::Gravity) {
                 forces.remove(ForceId::Gravity);
             }
+        }
+    }
+}
+
+fn set_player_direction(
+    mut player_query: Query<&mut MoveDirection, With<Player>>,
+    camera_query: Query<&Transform, With<MainCamera>>,
+    input: Res<Input<KeyCode>>,
+) {
+    let camera_transform = camera_query.single();
+    for mut direction in &mut player_query {
+        direction.0 = get_direction_in_camera_space(camera_transform, &input);
+    }
+}
+
+fn rotate_to_direction(
+    time: Res<Time>,
+    mut query: Query<(&mut Transform, &MoveDirection, &Speed)>,
+    mut rotation_target: Local<Transform>,
+) {
+    for (mut transform, direction, speed) in &mut query {
+        rotation_target.translation = transform.translation;
+        let flat_velo_direction = Vec3::new(direction.0.x, 0.0, direction.0.z).normalize_or_zero();
+        if flat_velo_direction != Vec3::ZERO {
+            let target_position = rotation_target.translation + flat_velo_direction;
+
+            rotation_target.look_at(target_position, Vec3::Y);
+            let turn_speed = speed.current() * 30.0;
+
+            transform.rotation = transform
+                .rotation
+                .slerp(rotation_target.rotation, time.delta_seconds() * turn_speed);
         }
     }
 }

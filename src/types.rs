@@ -62,7 +62,7 @@ impl InputBuffer {
 
     pub fn press(&mut self, action: PlayerAction) {
         self.buffered_actions
-            .insert(action, Timer::from_seconds(0.083, TimerMode::Once));
+            .insert(action, Timer::from_seconds(0.166, TimerMode::Once));
         self.pressed_actions.insert(action);
     }
 
@@ -313,6 +313,8 @@ impl Forces {
     pub fn add_to(&mut self, force_id: ForceId, amount: Vec3) {
         if let Some(force) = self.forces.get_mut(&force_id) {
             force.add_force(amount);
+        } else {
+            self.add(force_id, Force::new(amount, None, ForceDecayType::Manual));
         }
     }
 
