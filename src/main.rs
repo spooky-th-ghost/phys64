@@ -13,6 +13,6 @@ fn main() {
         .add_plugins(RapierDebugRenderPlugin::default())
         .add_plugins(WorldInspectorPlugin::default())
         .register_type::<Momentum>()
-        .add_plugins(SecondTakePlugin)
+        .add_plugins(MovementPlugin)
         .run();
 }

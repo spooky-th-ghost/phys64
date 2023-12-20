@@ -26,7 +26,6 @@ pub enum PlayerAction {
     Jump,
     Move,
 }
-
 #[derive(Component, Default)]
 pub struct InputBuffer {
     pressed_actions: HashSet<PlayerAction>,
@@ -34,6 +33,7 @@ pub struct InputBuffer {
     buffered_actions: HashMap<PlayerAction, Timer>,
 }
 
+#[allow(unused)]
 impl InputBuffer {
     pub fn just_pressed(&self, action: PlayerAction) -> bool {
         match self.pressed_actions.get(&action) {
@@ -101,6 +101,7 @@ pub struct MainCamera;
 #[reflect(Component)]
 pub struct Momentum(pub Vec3);
 
+#[allow(unused)]
 impl Momentum {
     pub fn get(&self) -> Vec3 {
         self.0
@@ -169,19 +170,32 @@ impl JumpStage {
 #[derive(Component, Default)]
 pub struct Jumper {
     stage: JumpStage,
+    increase_timer: Timer,
 }
 
 impl Jumper {
-    pub fn increase_stage(&mut self) {
-        match self.stage {
-            JumpStage::Single => self.stage = JumpStage::Double,
-            JumpStage::Double => self.stage = JumpStage::Tripple,
-            _ => (),
+    //Only tick when grounded
+    pub fn tick(&mut self, delta: std::time::Duration) {
+        self.increase_timer.tick(delta);
+        if self.increase_timer.finished() {
+            self.stage = JumpStage::Single;
         }
     }
 
-    pub fn reset_stage(&mut self) {
-        self.stage = JumpStage::Single;
+    pub fn land(&mut self) {
+        let (new_stage, new_timer) = match self.stage {
+            JumpStage::Single => (
+                JumpStage::Double,
+                Timer::from_seconds(0.166, TimerMode::Once),
+            ),
+            JumpStage::Double => (
+                JumpStage::Tripple,
+                Timer::from_seconds(0.166, TimerMode::Once),
+            ),
+            JumpStage::Tripple => (JumpStage::Single, Timer::default()),
+        };
+        self.stage = new_stage;
+        self.increase_timer = new_timer;
     }
 
     pub fn get_force(&self) -> f32 {

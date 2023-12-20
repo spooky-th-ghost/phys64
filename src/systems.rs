@@ -16,6 +16,7 @@ impl Plugin for MovementPlugin {
                 (
                     read_inputs,
                     (
+                        handle_jump_timer,
                         set_player_direction,
                         rotate_to_direction,
                         apply_gravity,
@@ -42,6 +43,14 @@ pub enum CameraMode {
 #[derive(Resource)]
 pub struct CameraConfig {
     mode: CameraMode,
+}
+
+fn handle_jump_timer(time: Res<Time>, mut jump_query: Query<(&mut Jumper, &GroundSensor)>) {
+    for (mut jumper, ground_sensor) in &mut jump_query {
+        if ground_sensor.grounded() {
+            jumper.tick(time.delta());
+        }
+    }
 }
 
 fn get_direction_in_camera_space(
@@ -128,6 +137,7 @@ fn setup(
         GravityAffected,
         GroundSensor::default(),
         InputBuffer::default(),
+        Jumper::default(),
     ));
 
     commands.spawn((
@@ -225,10 +235,8 @@ fn apply_gravity(
             } else {
                 forces.add_to(ForceId::Gravity, gravity.force());
             }
-        } else {
-            if forces.has_key(ForceId::Gravity) {
-                forces.remove(ForceId::Gravity);
-            }
+        } else if forces.has_key(ForceId::Gravity) {
+            forces.remove(ForceId::Gravity);
         }
     }
 }
@@ -266,10 +274,10 @@ fn rotate_to_direction(
 }
 
 fn handle_ground_sensor(
-    mut ground_sensor_query: Query<(&mut GroundSensor, &mut Forces, &Transform)>,
+    mut ground_sensor_query: Query<(&mut GroundSensor, &mut Forces, &mut Jumper, &Transform)>,
     rapier_context: Res<RapierContext>,
 ) {
-    for (mut ground_sensor, mut forces, transform) in &mut ground_sensor_query {
+    for (mut ground_sensor, mut forces, mut jumper, transform) in &mut ground_sensor_query {
         let shape_position = transform.translation + Vec3::NEG_Y * 0.8;
         let shape_rotation = transform.rotation;
         let cast_direction = Vec3::NEG_Y;
@@ -289,20 +297,20 @@ fn handle_ground_sensor(
         ) {
             ground_sensor.set_state(GroundedState::Grounded);
             forces.remove(ForceId::Jump);
+            jumper.land();
         } else {
             ground_sensor.set_state(GroundedState::Airborne);
         }
     }
 }
 
-fn jump(mut query: Query<(&mut Forces, &InputBuffer, &GroundSensor), With<Player>>) {
-    for (mut forces, buffer, sensor) in &mut query {
+fn jump(mut query: Query<(&mut Forces, &InputBuffer, &GroundSensor, &Jumper), With<Player>>) {
+    for (mut forces, buffer, sensor, jumper) in &mut query {
         if buffer.just_pressed(PlayerAction::Jump) && sensor.grounded() {
-            println!("{:?}", f32::from(Unit(60)));
             forces.add(
                 ForceId::Jump,
                 Force::new(
-                    Vec3::Y * f32::from(Unit(60)),
+                    Vec3::Y * jumper.get_force(),
                     Some(0.15),
                     ForceDecayType::Manual,
                 ),
@@ -313,10 +321,10 @@ fn jump(mut query: Query<(&mut Forces, &InputBuffer, &GroundSensor), With<Player
 
 fn release_jump(mut player_query: Query<(&mut Forces, &Momentum, &InputBuffer), With<Player>>) {
     for (mut forces, momentum, buffer) in &mut player_query {
-        if buffer.released(PlayerAction::Jump) || momentum.y() <= 0.0 {
-            if forces.has_key(ForceId::Jump) {
-                forces.remove(ForceId::Jump);
-            }
+        if (buffer.released(PlayerAction::Jump) || momentum.y() <= 0.0)
+            && forces.has_key(ForceId::Jump)
+        {
+            forces.remove(ForceId::Jump);
         }
     }
 }
