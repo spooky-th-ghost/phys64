@@ -107,6 +107,10 @@ impl Momentum {
         self.0
     }
 
+    pub fn get_flat(&self) -> Vec3 {
+        Vec3::new(self.0.x, 0.0, self.0.z)
+    }
+
     pub fn y(&self) -> f32 {
         self.0.y
     }
@@ -160,9 +164,9 @@ pub enum JumpStage {
 impl JumpStage {
     fn get_jump_force(&self) -> f32 {
         match self {
-            Self::Single => f32::from(Unit(60)),
-            Self::Double => f32::from(Unit(65)),
-            Self::Tripple => f32::from(Unit(70)),
+            Self::Single => 10.0,
+            Self::Double => 13.0,
+            Self::Tripple => 18.0,
         }
     }
 }
@@ -252,11 +256,11 @@ impl Speed {
 impl Default for Speed {
     fn default() -> Self {
         Speed {
-            base: Unit(8).into(),
-            current: Unit(8).into(),
+            base: 4.0,
+            current: 4.0,
             accel: 2.5,
-            max: Unit(40).into(),
-            base_max: Unit(40).into(),
+            max: 20.0,
+            base_max: 20.0,
             accel_timer: Timer::from_seconds(0.3, TimerMode::Once),
             reset_timer: Timer::from_seconds(0.1, TimerMode::Once),
         }
@@ -345,9 +349,11 @@ impl Force {
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub enum ForceId {
     Gravity,
+    Run,
     Jump,
     Wind,
     Slide,
+    Skid,
     Drift,
 }
 
@@ -358,6 +364,13 @@ pub struct Forces {
 }
 
 impl Forces {
+    pub fn get_vector(&self, force_id: ForceId) -> Option<Vec3> {
+        match self.forces.get(&force_id) {
+            Some(force) => Some(force.applied_force),
+            None => None,
+        }
+    }
+
     pub fn add(&mut self, force_id: ForceId, force: Force) {
         self.forces.insert(force_id, force);
     }
@@ -472,53 +485,5 @@ impl Default for GroundSensor {
             shape: bevy_rapier3d::prelude::Collider::cuboid(0.25, 0.1, 0.25),
             state: GroundedState::default(),
         }
-    }
-}
-
-#[derive(Default, Debug)]
-pub struct Unit(pub i32);
-
-impl std::ops::Add for Unit {
-    type Output = Self;
-    fn add(self, rhs: Self) -> Self::Output {
-        Unit(self.0 + rhs.0)
-    }
-}
-
-impl std::ops::AddAssign for Unit {
-    fn add_assign(&mut self, rhs: Self) {
-        self.0 += rhs.0;
-    }
-}
-
-impl std::ops::Sub for Unit {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        Unit(self.0 - rhs.0)
-    }
-}
-
-impl std::ops::SubAssign for Unit {
-    fn sub_assign(&mut self, rhs: Self) {
-        self.0 -= rhs.0;
-    }
-}
-
-impl From<f32> for Unit {
-    fn from(value: f32) -> Self {
-        Unit((value * 128.0) as i32)
-    }
-}
-
-impl From<i32> for Unit {
-    fn from(value: i32) -> Self {
-        Unit(value)
-    }
-}
-
-impl From<Unit> for f32 {
-    fn from(value: Unit) -> Self {
-        value.0 as f32 / 128.0
     }
 }
