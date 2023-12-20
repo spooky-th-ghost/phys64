@@ -156,6 +156,41 @@ fn read_inputs(
         if input.just_released(KeyCode::Space) {
             buffer.release(PlayerAction::Jump);
         }
+
+        if input.any_just_pressed(vec![KeyCode::A, KeyCode::D, KeyCode::S, KeyCode::W]) {
+            buffer.press(PlayerAction::Move);
+        }
+
+        if input.any_just_released(vec![KeyCode::A, KeyCode::D, KeyCode::S, KeyCode::W]) {
+            buffer.release(PlayerAction::Move);
+        }
+    }
+}
+
+fn handle_speed(
+    time: Res<Time>,
+    mut query: Query<(
+        &mut Momentum,
+        &mut Speed,
+        &MoveDirection,
+        &Transform,
+        &GroundSensor,
+    )>,
+) {
+    for (mut momentum, mut speed, direction, transform, ground_sensor) in &mut query {
+        if ground_sensor.grounded() {
+            if direction.is_active() {
+                speed.accelerate(time.delta(), time.delta_seconds());
+                momentum.set(speed.current() * transform.forward());
+                speed.reset_reset_timer();
+            } else {
+                momentum.clear_horizontal();
+                speed.tick_reset_timer(time.delta());
+                if speed.should_reset() {
+                    speed.reset();
+                }
+            }
+        }
     }
 }
 
@@ -263,6 +298,7 @@ fn handle_ground_sensor(
 fn jump(mut query: Query<(&mut Forces, &InputBuffer, &GroundSensor), With<Player>>) {
     for (mut forces, buffer, sensor) in &mut query {
         if buffer.just_pressed(PlayerAction::Jump) && sensor.grounded() {
+            println!("{:?}", f32::from(Unit(60)));
             forces.add(
                 ForceId::Jump,
                 Force::new(

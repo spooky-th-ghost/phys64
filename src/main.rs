@@ -146,11 +146,7 @@ fn apply_drift(
             forces.remove(ForceId::Drift);
         } else {
             let drift = get_direction_in_camera_space(camera_transform, &input);
-            if forces.has_key(ForceId::Drift) {
-                forces.add_to(ForceId::Drift, drift);
-            } else {
-                forces.add_to(ForceId::Drift, drift);
-            }
+            forces.add_to(ForceId::Drift, drift);
         }
     }
 }

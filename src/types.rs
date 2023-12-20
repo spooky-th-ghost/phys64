@@ -24,6 +24,7 @@ pub struct Player;
 #[derive(Component, Eq, PartialEq, Hash, Clone, Copy, Debug)]
 pub enum PlayerAction {
     Jump,
+    Move,
 }
 
 #[derive(Component, Default)]
@@ -146,6 +147,47 @@ impl Momentum {
 
 #[derive(Component)]
 pub struct GravityAffected;
+
+#[derive(Default, PartialEq)]
+pub enum JumpStage {
+    #[default]
+    Single,
+    Double,
+    Tripple,
+}
+
+impl JumpStage {
+    fn get_jump_force(&self) -> f32 {
+        match self {
+            Self::Single => f32::from(Unit(60)),
+            Self::Double => f32::from(Unit(65)),
+            Self::Tripple => f32::from(Unit(70)),
+        }
+    }
+}
+
+#[derive(Component, Default)]
+pub struct Jumper {
+    stage: JumpStage,
+}
+
+impl Jumper {
+    pub fn increase_stage(&mut self) {
+        match self.stage {
+            JumpStage::Single => self.stage = JumpStage::Double,
+            JumpStage::Double => self.stage = JumpStage::Tripple,
+            _ => (),
+        }
+    }
+
+    pub fn reset_stage(&mut self) {
+        self.stage = JumpStage::Single;
+    }
+
+    pub fn get_force(&self) -> f32 {
+        self.stage.get_jump_force()
+    }
+}
 
 #[derive(Component)]
 pub struct Speed {
