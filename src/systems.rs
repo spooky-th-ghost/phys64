@@ -2,9 +2,9 @@ use crate::types::*;
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 
-pub struct SecondTakePlugin;
+pub struct MovementPlugin;
 
-impl Plugin for SecondTakePlugin {
+impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Gravity::new(0.02))
             .insert_resource(CameraConfig {
