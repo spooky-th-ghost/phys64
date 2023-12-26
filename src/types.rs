@@ -2,7 +2,7 @@ use bevy::{prelude::*, utils::HashMap};
 use std::collections::HashSet;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub enum PlayerSystemSet {
+pub enum EngineSystemSet {
     Input,
     CalculateMomentum,
     ApplyMomentum,
@@ -27,9 +27,6 @@ impl Gravity {
 
 #[derive(Component)]
 pub struct Player;
-
-#[derive(Component)]
-pub struct MainCamera;
 
 #[derive(Reflect, Default, Component)]
 #[reflect(Component)]

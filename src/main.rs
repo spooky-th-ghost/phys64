@@ -3,14 +3,14 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::*;
 mod types;
 use types::*;
-mod systems;
-use systems::*;
 mod camera;
 use camera::*;
 mod input;
 use input::*;
 mod player;
 use player::*;
+mod movement;
+use movement::*;
 
 fn main() {
     App::new()
@@ -19,16 +19,60 @@ fn main() {
         .add_plugins(RapierDebugRenderPlugin::default())
         .add_plugins(WorldInspectorPlugin::default())
         .register_type::<Momentum>()
-        .add_plugins(MovementPlugin)
-        .add_plugins(InputPlugin)
+        .add_plugins((MovementPlugin, InputPlugin, CameraPlugin, PlayerPlugin))
+        .insert_resource(Gravity::new(0.4))
+        .insert_resource(Time::<Fixed>::from_seconds(1.0 / 60.0))
+        .insert_resource(PlayerData::default())
+        .add_systems(Startup, setup)
         .configure_sets(
             FixedUpdate,
             (
-                PlayerSystemSet::Input,
-                PlayerSystemSet::CalculateMomentum,
-                PlayerSystemSet::ApplyMomentum,
+                EngineSystemSet::Input,
+                EngineSystemSet::CalculateMomentum,
+                EngineSystemSet::ApplyMomentum,
             )
                 .chain(),
         )
         .run();
+}
+
+fn setup(
+    mut commands: Commands,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
+    commands.spawn((
+        PbrBundle {
+            material: materials.add(Color::LIME_GREEN.into()),
+            mesh: meshes.add(shape::Capsule { ..default() }.into()),
+            ..default()
+        },
+        Player,
+        Collider::capsule_y(0.5, 0.5),
+        KinematicCharacterController {
+            offset: CharacterLength::Absolute(0.01),
+            snap_to_ground: Some(CharacterLength::Absolute(0.25)),
+            ..default()
+        },
+        MoveDirection::default(),
+        Momentum::default(),
+        Speed::default(),
+        Forces::default(),
+        GravityAffected,
+        GroundSensor::default(),
+        InputBuffer::default(),
+        Jumper::default(),
+        crate::InputListenerBundle::input_map(),
+    ));
+
+    commands.spawn((
+        PbrBundle {
+            material: materials.add(Color::WHITE.into()),
+            mesh: meshes.add(shape::Box::new(20.0, 0.5, 20.0).into()),
+            transform: Transform::from_translation(Vec3::new(0.0, -2.0, 0.0)),
+            ..default()
+        },
+        Collider::cuboid(10.0, 0.25, 10.0),
+        RigidBody::Fixed,
+    ));
 }

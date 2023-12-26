@@ -2,6 +2,21 @@ use crate::{input::PlayerAction, player::PlayerData};
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
 
+pub struct CameraPlugin;
+
+impl Plugin for CameraPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Startup, spawn_camera).add_systems(
+            Update,
+            (
+                update_camera_desired_position,
+                position_camera,
+                rotate_camera,
+            ),
+        );
+    }
+}
+
 #[derive(Component, Default)]
 pub struct MainCamera {
     offset: Vec3,
@@ -133,20 +148,5 @@ fn rotate_camera(
                 camera.angle += 360.0;
             }
         }
-    }
-}
-
-pub struct CameraPlugin;
-
-impl Plugin for CameraPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn_camera).add_systems(
-            Update,
-            (
-                update_camera_desired_position,
-                position_camera,
-                rotate_camera,
-            ),
-        );
     }
 }

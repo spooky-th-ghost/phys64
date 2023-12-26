@@ -1,4 +1,4 @@
-use crate::types::PlayerSystemSet;
+use crate::types::EngineSystemSet;
 use bevy::{prelude::*, utils::HashMap};
 use leafwing_input_manager::{prelude::*, *};
 use std::collections::HashSet;
@@ -8,7 +8,7 @@ pub struct InputPlugin;
 impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(InputManagerPlugin::<PlayerAction>::default())
-            .add_systems(FixedUpdate, buffer_inputs.in_set(PlayerSystemSet::Input));
+            .add_systems(FixedUpdate, buffer_inputs.in_set(EngineSystemSet::Input));
     }
 }
 

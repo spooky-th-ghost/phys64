@@ -1,3 +1,4 @@
+use crate::types::Player;
 use bevy::prelude::*;
 
 #[derive(Resource, Default)]
@@ -19,4 +20,21 @@ pub enum IndexPointer {
     Empty,
     FindAt(usize),
     WaitFor(usize),
+}
+
+pub struct PlayerPlugin;
+
+impl Plugin for PlayerPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, update_player_data);
+    }
+}
+
+fn update_player_data(
+    mut player_data: ResMut<PlayerData>,
+    player_query: Query<&Transform, With<Player>>,
+) {
+    for transform in &player_query {
+        player_data.player_position = transform.translation;
+    }
 }
