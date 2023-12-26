@@ -1,6 +1,13 @@
 use bevy::{prelude::*, utils::HashMap};
 use std::collections::HashSet;
 
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub enum PlayerSystemSet {
+    Input,
+    CalculateMomentum,
+    ApplyMomentum,
+}
+
 #[derive(Resource)]
 pub struct Gravity {
     force: Vec3,
@@ -20,79 +27,6 @@ impl Gravity {
 
 #[derive(Component)]
 pub struct Player;
-
-#[derive(Component, Eq, PartialEq, Hash, Clone, Copy, Debug)]
-pub enum PlayerAction {
-    Jump,
-    Move,
-}
-#[derive(Component, Default)]
-pub struct InputBuffer {
-    pressed_actions: HashSet<PlayerAction>,
-    stale_actions: HashSet<PlayerAction>,
-    buffered_actions: HashMap<PlayerAction, Timer>,
-}
-
-#[allow(unused)]
-impl InputBuffer {
-    pub fn just_pressed(&self, action: PlayerAction) -> bool {
-        match self.pressed_actions.get(&action) {
-            Some(_) => match self.stale_actions.get(&action) {
-                None => return true,
-                _ => (),
-            },
-            _ => (),
-        }
-
-        match self.buffered_actions.get(&action) {
-            Some(_) => match self.stale_actions.get(&action) {
-                Some(_) => return false,
-                None => return true,
-            },
-            None => false,
-        }
-    }
-
-    pub fn pressed(&self, action: PlayerAction) -> bool {
-        self.pressed_actions.get(&action).is_some()
-    }
-
-    pub fn released(&self, action: PlayerAction) -> bool {
-        self.pressed_actions.get(&action).is_none() && self.buffered_actions.get(&action).is_none()
-    }
-
-    pub fn press(&mut self, action: PlayerAction) {
-        self.buffered_actions
-            .insert(action, Timer::from_seconds(0.166, TimerMode::Once));
-        self.pressed_actions.insert(action);
-    }
-
-    pub fn release(&mut self, action: PlayerAction) {
-        self.buffered_actions.remove(&action);
-        self.stale_actions.remove(&action);
-        self.pressed_actions.remove(&action);
-    }
-
-    pub fn tick(&mut self, delta: std::time::Duration) {
-        let mut stale_buffers: Vec<PlayerAction> = Vec::new();
-        self.buffered_actions
-            .iter_mut()
-            .for_each(|(action, timer)| {
-                timer.tick(delta);
-                match timer.finished() {
-                    true => {
-                        self.stale_actions.insert(*action);
-                        stale_buffers.push(*action);
-                    }
-                    _ => (),
-                }
-            });
-        for action in stale_buffers.iter() {
-            self.buffered_actions.remove(action);
-            self.stale_actions.insert(*action);
-        }
-    }
-}
 
 #[derive(Component)]
 pub struct MainCamera;

@@ -11,3 +11,17 @@ Wed 20 Dec 2023 03:15:49 PM EST
 * Skid complete, movement feeling much better
 * Don't worry about pivots for now
 * Later tonight work on longjump, slopes, and update the camera
+
+
+
+
+Mon 25 Dec 2023 04:47:31 PM EST
+* Focus on longjump tonight
+* after longjump start with carrying code and throwing stuff, since that's the most fun
+
+
+
+Mon 25 Dec 2023 11:53:29 PM EST
+
+* No longjump progress but started backporting some things from moonshine (Camera, Input)
+* Don't get too lost in the sauce, but try to keep in mind the ability to make all of this reusable for future projects, maybe build the plugin differently based on features eg SM64 plugin is the current stuff I'm working on and as I build more projects create features that cover that

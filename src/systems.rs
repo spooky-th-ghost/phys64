@@ -1,4 +1,7 @@
-use crate::types::*;
+use crate::{
+    input::{InputBuffer, PlayerAction},
+    types::*,
+};
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 
@@ -14,22 +17,23 @@ impl Plugin for MovementPlugin {
             .add_systems(
                 FixedUpdate,
                 (
-                    read_inputs,
-                    (
-                        handle_jump_timer,
-                        set_player_direction,
-                        rotate_to_direction,
-                        apply_gravity,
-                        jump,
-                        release_jump,
-                        handle_ground_sensor,
-                        handle_speed,
-                        apply_drift,
-                    ),
-                    apply_forces,
-                    set_translation,
+                    handle_jump_timer,
+                    set_player_direction,
+                    rotate_to_direction,
+                    apply_gravity,
+                    jump,
+                    release_jump,
+                    handle_ground_sensor,
+                    handle_speed,
+                    apply_drift,
                 )
-                    .chain(),
+                    .in_set(PlayerSystemSet::CalculateMomentum),
+            )
+            .add_systems(
+                FixedUpdate,
+                (apply_forces, set_translation)
+                    .chain()
+                    .in_set(PlayerSystemSet::ApplyMomentum),
             )
             .insert_resource(Time::<Fixed>::from_seconds(1.0 / 60.0));
     }
@@ -139,6 +143,7 @@ fn setup(
         GroundSensor::default(),
         InputBuffer::default(),
         Jumper::default(),
+        crate::InputListenerBundle::input_map(),
     ));
 
     commands.spawn((
@@ -151,31 +156,6 @@ fn setup(
         Collider::cuboid(10.0, 0.25, 10.0),
         RigidBody::Fixed,
     ));
-}
-
-fn read_inputs(
-    time: Res<Time>,
-    input: Res<Input<KeyCode>>,
-    mut input_buffer_query: Query<&mut InputBuffer>,
-) {
-    for mut buffer in &mut input_buffer_query {
-        buffer.tick(time.delta());
-        if input.just_pressed(KeyCode::Space) {
-            buffer.press(PlayerAction::Jump);
-        }
-
-        if input.just_released(KeyCode::Space) {
-            buffer.release(PlayerAction::Jump);
-        }
-
-        if input.any_just_pressed(vec![KeyCode::A, KeyCode::D, KeyCode::S, KeyCode::W]) {
-            buffer.press(PlayerAction::Move);
-        }
-
-        if input.any_just_released(vec![KeyCode::A, KeyCode::D, KeyCode::S, KeyCode::W]) {
-            buffer.release(PlayerAction::Move);
-        }
-    }
 }
 
 fn handle_speed(

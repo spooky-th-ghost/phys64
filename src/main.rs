@@ -5,6 +5,12 @@ mod types;
 use types::*;
 mod systems;
 use systems::*;
+mod camera;
+use camera::*;
+mod input;
+use input::*;
+mod player;
+use player::*;
 
 fn main() {
     App::new()
@@ -14,5 +20,15 @@ fn main() {
         .add_plugins(WorldInspectorPlugin::default())
         .register_type::<Momentum>()
         .add_plugins(MovementPlugin)
+        .add_plugins(InputPlugin)
+        .configure_sets(
+            FixedUpdate,
+            (
+                PlayerSystemSet::Input,
+                PlayerSystemSet::CalculateMomentum,
+                PlayerSystemSet::ApplyMomentum,
+            )
+                .chain(),
+        )
         .run();
 }
