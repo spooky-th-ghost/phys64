@@ -24,6 +24,7 @@ pub struct MainCamera {
     easing: f32,
     camera_mode: CameraMode,
     desired_position: Vec3,
+    desired_rotation: Quat,
 }
 
 #[derive(Default)]
@@ -59,6 +60,7 @@ fn spawn_camera(mut commands: Commands) {
             easing: 4.0,
             camera_mode: CameraMode::Fixed,
             desired_position: Vec3::ZERO,
+            desired_rotation: Quat::IDENTITY,
         });
 }
 
@@ -72,16 +74,16 @@ fn update_camera_desired_position(
         starting_transform.rotation = Quat::default();
         starting_transform.rotate_y(camera.angle.to_radians());
         let dir = starting_transform.forward().normalize();
-        camera.desired_position =
+        starting_transform.translation =
             starting_transform.translation + (dir * camera.offset.z) + (Vec3::Y * camera.offset.y);
+        starting_transform.look_at(player_data.player_position, Vec3::Y);
+
+        camera.desired_position = starting_transform.translation;
+        camera.desired_rotation = starting_transform.rotation;
     }
 }
 
-fn position_camera(
-    time: Res<Time>,
-    player_data: Res<PlayerData>,
-    mut camera_query: Query<(&mut Transform, &MainCamera)>,
-) {
+fn position_camera(time: Res<Time>, mut camera_query: Query<(&mut Transform, &MainCamera)>) {
     for (mut transform, camera) in &mut camera_query {
         match camera.camera_mode {
             CameraMode::Fixed | CameraMode::Free => {
@@ -89,8 +91,12 @@ fn position_camera(
                     camera.desired_position,
                     time.delta_seconds() * camera.easing,
                 );
+                let slerped_rotation = transform.rotation.slerp(
+                    camera.desired_rotation,
+                    time.delta_seconds() * camera.easing,
+                );
                 transform.translation = lerped_position;
-                transform.look_at(player_data.player_position, Vec3::Y);
+                transform.rotation = slerped_rotation;
             }
             _ => (),
         }

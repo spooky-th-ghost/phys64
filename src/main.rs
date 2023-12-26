@@ -62,7 +62,7 @@ fn setup(
         GroundSensor::default(),
         InputBuffer::default(),
         Jumper::default(),
-        crate::InputListenerBundle::input_map(),
+        InputListenerBundle::input_map(),
     ));
 
     commands.spawn((
