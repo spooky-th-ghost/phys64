@@ -8,6 +8,23 @@ pub enum EngineSystemSet {
     ApplyMomentum,
 }
 
+#[derive(Component)]
+pub struct Sliding;
+
+#[derive(Default)]
+pub enum CarryWeight {
+    #[default]
+    Light,
+    Medium,
+    Heavy,
+}
+
+#[derive(Component)]
+pub struct Carryable {
+    pub weight: CarryWeight,
+    pub offset: Vec3,
+}
+
 #[derive(Resource)]
 pub struct Gravity {
     force: Vec3,

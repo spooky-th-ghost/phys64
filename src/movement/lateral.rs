@@ -7,20 +7,23 @@ impl Plugin for LateralMovementPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             FixedUpdate,
-            (rotate_to_direction, handle_speed).in_set(EngineSystemSet::CalculateMomentum),
+            (handle_speed, rotate_to_direction).in_set(EngineSystemSet::CalculateMomentum),
         );
     }
 }
 
 fn handle_speed(
     time: Res<Time>,
-    mut query: Query<(
-        &mut Forces,
-        &mut Speed,
-        &MoveDirection,
-        &Transform,
-        &GroundSensor,
-    )>,
+    mut query: Query<
+        (
+            &mut Forces,
+            &mut Speed,
+            &MoveDirection,
+            &Transform,
+            &GroundSensor,
+        ),
+        Without<Sliding>,
+    >,
 ) {
     for (mut forces, mut speed, direction, transform, ground_sensor) in &mut query {
         if ground_sensor.grounded() {
@@ -51,7 +54,7 @@ fn handle_speed(
 
 fn rotate_to_direction(
     time: Res<Time>,
-    mut query: Query<(&mut Transform, &MoveDirection, &Speed, &GroundSensor)>,
+    mut query: Query<(&mut Transform, &MoveDirection, &Speed, &GroundSensor), Without<Sliding>>,
     mut rotation_target: Local<Transform>,
 ) {
     for (mut transform, direction, speed, ground_sensor) in &mut query {

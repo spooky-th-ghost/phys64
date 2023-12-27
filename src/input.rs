@@ -18,6 +18,7 @@ pub enum PlayerAction {
     Jump,
     Move,
     Interact,
+    Crouch,
     CamRotateRight,
     CamRotateLeft,
     CamModeChangePositive,
@@ -103,6 +104,7 @@ impl InputListenerBundle {
         let input_map = input_map::InputMap::new([
             (KeyCode::Space, Jump),
             (KeyCode::L, Interact),
+            (KeyCode::P, Crouch),
             (KeyCode::Left, CamRotateLeft),
             (KeyCode::Right, CamRotateRight),
             (KeyCode::Up, CamModeChangePositive),
@@ -111,6 +113,7 @@ impl InputListenerBundle {
         .insert_multiple([
             (GamepadButtonType::South, Jump),
             (GamepadButtonType::West, Interact),
+            (GamepadButtonType::RightTrigger, Crouch),
             (GamepadButtonType::LeftTrigger2, CamRotateLeft),
             (GamepadButtonType::RightTrigger2, CamRotateRight),
         ])

@@ -77,6 +77,7 @@ fn handle_ground_sensor(
             if momentum.y() <= 0.0 && !ground_sensor.grounded() {
                 ground_sensor.set_state(GroundedState::Grounded);
                 forces.remove(ForceId::Jump);
+                forces.remove(ForceId::Slide);
                 jumper.land();
             }
         } else {

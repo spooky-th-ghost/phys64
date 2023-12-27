@@ -12,7 +12,13 @@ impl Plugin for PlayerMovementPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             FixedUpdate,
-            (set_player_direction, apply_drift, jump, release_jump)
+            (
+                set_player_direction,
+                apply_drift,
+                jump,
+                release_jump,
+                enter_sliding,
+            )
                 .in_set(EngineSystemSet::CalculateMomentum),
         );
     }
@@ -80,9 +86,49 @@ fn apply_drift(
     }
 }
 
-fn jump(mut query: Query<(&mut Forces, &InputBuffer, &GroundSensor, &Jumper), With<Player>>) {
-    for (mut forces, buffer, sensor, jumper) in &mut query {
+fn enter_sliding(
+    mut commands: Commands,
+    mut player_query: Query<(Entity, &InputBuffer, &GroundSensor, &mut Forces), Without<Sliding>>,
+) {
+    for (entity, buffer, ground_sensor, mut forces) in &mut player_query {
+        if buffer.pressed(PlayerAction::Crouch)
+            && forces.has_key(ForceId::Run)
+            && ground_sensor.grounded()
+        {
+            let run_vector = forces.get_vector(ForceId::Run);
+
+            if let Some(vector) = run_vector {
+                forces.remove(ForceId::Run);
+
+                commands.entity(entity).insert(Sliding);
+                forces.add(
+                    ForceId::Slide,
+                    Force::new(vector * 2.0, None, ForceDecayType::Manual),
+                );
+            }
+        }
+    }
+}
+
+fn jump(
+    mut commands: Commands,
+    mut query: Query<
+        (
+            Entity,
+            &mut Forces,
+            &InputBuffer,
+            &GroundSensor,
+            &Jumper,
+            Has<Sliding>,
+        ),
+        With<Player>,
+    >,
+) {
+    for (entity, mut forces, buffer, sensor, jumper, is_sliding) in &mut query {
         if buffer.just_pressed(PlayerAction::Jump) && sensor.grounded() {
+            if is_sliding {
+                commands.entity(entity).remove::<Sliding>();
+            }
             forces.add(
                 ForceId::Jump,
                 Force::new(

@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+mod grabbing;
 mod movement;
 
 #[derive(Component)]
