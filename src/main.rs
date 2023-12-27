@@ -51,7 +51,12 @@ fn setup(
         Collider::capsule_y(0.5, 0.5),
         KinematicCharacterController {
             offset: CharacterLength::Absolute(0.01),
-            snap_to_ground: Some(CharacterLength::Absolute(0.25)),
+            snap_to_ground: Some(CharacterLength::Absolute(1.0)),
+            autostep: Some(CharacterAutostep {
+                max_height: CharacterLength::Absolute(0.5),
+                min_width: CharacterLength::Absolute(0.25),
+                include_dynamic_bodies: true,
+            }),
             ..default()
         },
         MoveDirection::default(),
@@ -69,7 +74,8 @@ fn setup(
         PbrBundle {
             material: materials.add(Color::WHITE.into()),
             mesh: meshes.add(shape::Box::new(20.0, 0.5, 20.0).into()),
-            transform: Transform::from_translation(Vec3::new(0.0, -2.0, 0.0)),
+            transform: Transform::from_translation(Vec3::new(0.0, -2.0, 0.0))
+                .with_rotation(Quat::from_axis_angle(Vec3::Z, 20.0_f32.to_radians())),
             ..default()
         },
         Collider::cuboid(10.0, 0.25, 10.0),

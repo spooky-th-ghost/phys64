@@ -46,7 +46,9 @@ fn apply_gravity(
 }
 
 fn handle_ground_sensor(
+    mut gizmos: Gizmos,
     mut ground_sensor_query: Query<(
+        Entity,
         &mut GroundSensor,
         &mut Forces,
         &mut Jumper,
@@ -55,18 +57,20 @@ fn handle_ground_sensor(
     )>,
     rapier_context: Res<RapierContext>,
 ) {
-    for (mut ground_sensor, mut forces, mut jumper, momentum, transform) in &mut ground_sensor_query
+    for (entity, mut ground_sensor, mut forces, mut jumper, momentum, transform) in
+        &mut ground_sensor_query
     {
-        let shape_position = transform.translation + Vec3::NEG_Y * 0.8;
+        // Detect the ground using a shape cast
+        let cast_origin = transform.translation + Vec3::NEG_Y * 0.8;
         let shape_rotation = transform.rotation;
         let cast_direction = Vec3::NEG_Y;
         let cast_shape = ground_sensor.shape_ref();
         let cast_distance = 0.3;
         let stop_at_penetration = false;
-        let cast_filter = QueryFilter::new();
+        let cast_filter = QueryFilter::new().exclude_collider(entity);
 
         if let Some(_) = rapier_context.cast_shape(
-            shape_position,
+            cast_origin,
             shape_rotation,
             cast_direction,
             cast_shape,
@@ -82,6 +86,23 @@ fn handle_ground_sensor(
             }
         } else {
             ground_sensor.set_state(GroundedState::Airborne);
+        }
+        //Cast a ray to get the angle of our slope
+
+        if let Some((_, intersection)) = rapier_context.cast_ray_and_get_normal(
+            cast_origin,
+            cast_direction,
+            cast_distance,
+            true,
+            cast_filter,
+        ) {
+            ground_sensor.set_normal(intersection.normal);
+            let gradient = ground_sensor.get_slope_gradient();
+            gizmos.line(
+                transform.translation,
+                transform.translation + (gradient * 5.0),
+                Color::RED,
+            );
         }
     }
 }

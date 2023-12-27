@@ -408,6 +408,9 @@ pub enum GroundedState {
 pub struct GroundSensor {
     shape: bevy_rapier3d::prelude::Collider,
     state: GroundedState,
+    surface_normal: Vec3,
+    slope_angle: f32,
+    slope_gradient: Vec3,
 }
 
 impl GroundSensor {
@@ -422,6 +425,22 @@ impl GroundSensor {
     pub fn shape_ref(&self) -> &bevy_rapier3d::prelude::Collider {
         &self.shape
     }
+
+    pub fn set_normal(&mut self, normal: Vec3) {
+        if normal != self.surface_normal {
+            self.surface_normal = normal;
+            self.slope_angle = normal.angle_between(Vec3::Y).to_degrees();
+            self.slope_gradient = normal.cross(Vec3::Y).cross(self.surface_normal) * -1.0
+        }
+    }
+
+    pub fn get_surface_angle(&self) -> f32 {
+        self.slope_angle
+    }
+
+    pub fn get_slope_gradient(&self) -> Vec3 {
+        self.slope_gradient
+    }
 }
 
 impl Default for GroundSensor {
@@ -429,6 +448,9 @@ impl Default for GroundSensor {
         GroundSensor {
             shape: bevy_rapier3d::prelude::Collider::cuboid(0.25, 0.1, 0.25),
             state: GroundedState::default(),
+            surface_normal: Vec3::Y,
+            slope_angle: 0.0,
+            slope_gradient: Vec3::Z,
         }
     }
 }
