@@ -25,9 +25,6 @@ impl Gravity {
     }
 }
 
-#[derive(Component)]
-pub struct Player;
-
 #[derive(Reflect, Default, Component)]
 #[reflect(Component)]
 pub struct Momentum(pub Vec3);

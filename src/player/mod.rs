@@ -1,5 +1,9 @@
-use crate::types::Player;
 use bevy::prelude::*;
+
+mod movement;
+
+#[derive(Component)]
+pub struct Player;
 
 #[derive(Resource, Default)]
 pub struct PlayerData {
@@ -26,7 +30,8 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, update_player_data);
+        app.add_plugins(movement::PlayerMovementPlugin)
+            .add_systems(Update, update_player_data);
     }
 }
 

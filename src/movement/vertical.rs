@@ -11,13 +11,7 @@ impl Plugin for VerticalMovementPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             FixedUpdate,
-            (
-                handle_jump_timer,
-                apply_gravity,
-                jump,
-                release_jump,
-                handle_ground_sensor,
-            )
+            (handle_jump_timer, apply_gravity, handle_ground_sensor)
                 .in_set(EngineSystemSet::CalculateMomentum),
         );
     }
@@ -87,31 +81,6 @@ fn handle_ground_sensor(
             }
         } else {
             ground_sensor.set_state(GroundedState::Airborne);
-        }
-    }
-}
-
-fn jump(mut query: Query<(&mut Forces, &InputBuffer, &GroundSensor, &Jumper), With<Player>>) {
-    for (mut forces, buffer, sensor, jumper) in &mut query {
-        if buffer.just_pressed(PlayerAction::Jump) && sensor.grounded() {
-            forces.add(
-                ForceId::Jump,
-                Force::new(
-                    Vec3::Y * jumper.get_force(),
-                    Some(0.15),
-                    ForceDecayType::Manual,
-                ),
-            );
-        }
-    }
-}
-
-fn release_jump(mut player_query: Query<(&mut Forces, &Momentum, &InputBuffer), With<Player>>) {
-    for (mut forces, momentum, buffer) in &mut player_query {
-        if (buffer.released(PlayerAction::Jump) || momentum.y() <= 0.0)
-            && forces.has_key(ForceId::Jump)
-        {
-            forces.remove(ForceId::Jump);
         }
     }
 }

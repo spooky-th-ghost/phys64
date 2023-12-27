@@ -1,4 +1,4 @@
-use crate::{camera::MainCamera, types::*};
+use crate::types::*;
 use bevy::prelude::*;
 
 pub struct LateralMovementPlugin;
@@ -7,49 +7,9 @@ impl Plugin for LateralMovementPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             FixedUpdate,
-            (
-                set_player_direction,
-                rotate_to_direction,
-                handle_speed,
-                apply_drift,
-            )
-                .in_set(EngineSystemSet::CalculateMomentum),
+            (rotate_to_direction, handle_speed).in_set(EngineSystemSet::CalculateMomentum),
         );
     }
-}
-
-fn get_direction_in_camera_space(
-    camera_transform: &Transform,
-    input: &Res<Input<KeyCode>>,
-) -> Vec3 {
-    let mut forward = camera_transform.forward();
-    forward.y = 0.0;
-    forward = forward.normalize();
-
-    let mut right = camera_transform.right();
-    right.y = 0.0;
-    right = right.normalize();
-
-    let mut x = 0.0;
-    let mut y = 0.0;
-
-    if input.pressed(KeyCode::A) {
-        x -= 1.0;
-    }
-    if input.pressed(KeyCode::D) {
-        x += 1.0;
-    }
-    if input.pressed(KeyCode::W) {
-        y += 1.0;
-    }
-    if input.pressed(KeyCode::S) {
-        y -= 1.0;
-    }
-
-    let right_vec: Vec3 = x * right;
-    let forward_vec: Vec3 = y * forward;
-
-    right_vec + forward_vec
 }
 
 fn handle_speed(
@@ -86,34 +46,6 @@ fn handle_speed(
                 }
             }
         }
-    }
-}
-
-fn apply_drift(
-    time: Res<Time>,
-    mut character_query: Query<(&mut Forces, &GroundSensor)>,
-    camera_query: Query<&Transform, With<MainCamera>>,
-    input: Res<Input<KeyCode>>,
-) {
-    let camera_transform = camera_query.single();
-    for (mut forces, ground_sensor) in &mut character_query {
-        if ground_sensor.grounded() {
-            forces.remove(ForceId::Drift);
-        } else {
-            let drift = get_direction_in_camera_space(camera_transform, &input);
-            forces.add_to(ForceId::Drift, drift * time.delta_seconds() * 5.0);
-        }
-    }
-}
-
-fn set_player_direction(
-    mut player_query: Query<&mut MoveDirection, With<Player>>,
-    camera_query: Query<&Transform, With<MainCamera>>,
-    input: Res<Input<KeyCode>>,
-) {
-    let camera_transform = camera_query.single();
-    for mut direction in &mut player_query {
-        direction.0 = get_direction_in_camera_space(camera_transform, &input);
     }
 }
 
