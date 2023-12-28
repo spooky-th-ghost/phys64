@@ -11,7 +11,12 @@ impl Plugin for VerticalMovementPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             FixedUpdate,
-            (handle_jump_timer, apply_gravity, handle_ground_sensor)
+            (
+                handle_jump_timer,
+                apply_gravity,
+                handle_ground_sensor,
+                stick_to_slopes,
+            )
                 .in_set(EngineSystemSet::CalculateMomentum),
         );
     }
@@ -45,8 +50,28 @@ fn apply_gravity(
     }
 }
 
+fn stick_to_slopes(mut character_query: Query<(&mut Forces, &GroundSensor)>) {
+    for (mut forces, sensor) in &mut character_query {
+        if sensor.grounded() && sensor.get_surface_angle() > 5.0 {
+            if !forces.has_key(ForceId::Slope) {
+                forces.add(
+                    ForceId::Slope,
+                    Force::new(
+                        Vec3::NEG_Y * sensor.get_surface_angle() * sensor.get_surface_angle(),
+                        None,
+                        ForceDecayType::Manual,
+                    ),
+                );
+            }
+        } else if !sensor.grounded() {
+            if forces.has_key(ForceId::Slope) {
+                forces.remove(ForceId::Slope);
+            }
+        }
+    }
+}
+
 fn handle_ground_sensor(
-    mut gizmos: Gizmos,
     mut ground_sensor_query: Query<(
         Entity,
         &mut GroundSensor,
@@ -88,7 +113,6 @@ fn handle_ground_sensor(
             ground_sensor.set_state(GroundedState::Airborne);
         }
         //Cast a ray to get the angle of our slope
-
         if let Some((_, intersection)) = rapier_context.cast_ray_and_get_normal(
             cast_origin,
             cast_direction,
@@ -97,12 +121,6 @@ fn handle_ground_sensor(
             cast_filter,
         ) {
             ground_sensor.set_normal(intersection.normal);
-            let gradient = ground_sensor.get_slope_gradient();
-            gizmos.line(
-                transform.translation,
-                transform.translation + (gradient * 5.0),
-                Color::RED,
-            );
         }
     }
 }

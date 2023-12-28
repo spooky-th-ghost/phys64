@@ -110,6 +110,27 @@ fn enter_sliding(
     }
 }
 
+fn handle_sliding_momentum(
+    time: Res<Time>,
+    mut player_query: Query<(&mut Forces, &GroundSensor), With<Sliding>>,
+) {
+    for (mut forces, sensor) in &mut player_query {
+        let sliding_force = forces.get_vector(ForceId::Slide);
+        if let Some(force) = sliding_force {
+            if sensor.get_surface_angle() < 5.0 {
+                if force.length() < 5.0 {
+                    forces.add_to(ForceId::Slide, force * -0.5 * time.delta_seconds());
+                }
+            } else {
+                forces.add_to(
+                    ForceId::Slide,
+                    sensor.get_slope_gradient() * time.delta_seconds(),
+                );
+            }
+        }
+    }
+}
+
 fn jump(
     mut commands: Commands,
     mut query: Query<

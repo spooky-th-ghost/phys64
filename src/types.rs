@@ -300,6 +300,7 @@ pub enum ForceId {
     Slide,
     Skid,
     Drift,
+    Slope,
 }
 
 #[derive(Component, Default)]
@@ -404,9 +405,12 @@ pub enum GroundedState {
     Airborne,
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 pub struct GroundSensor {
+    #[reflect(ignore)]
     shape: bevy_rapier3d::prelude::Collider,
+    #[reflect(ignore)]
     state: GroundedState,
     surface_normal: Vec3,
     slope_angle: f32,
@@ -432,6 +436,10 @@ impl GroundSensor {
             self.slope_angle = normal.angle_between(Vec3::Y).to_degrees();
             self.slope_gradient = normal.cross(Vec3::Y).cross(self.surface_normal) * -1.0
         }
+    }
+
+    pub fn get_normal(&self) -> Vec3 {
+        self.surface_normal
     }
 
     pub fn get_surface_angle(&self) -> f32 {
